@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { PDFParse } from "pdf-parse";
-import { getOpenAIClient, getOpenAIModel } from "@/lib/server/openai-client";
+import { getOpenAIModel, withOpenAIRotation } from "@/lib/server/openai-client";
 import type { GeneratedStudyPack } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -276,7 +276,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const client = getOpenAIClient();
     const model = getOpenAIModel();
     const systemPrompt =
       "Você é um professor universitário experiente em didática. " +
@@ -328,30 +327,32 @@ ${combinedText}
 
     let completionText = "";
 
-    try {
-      const response = await client.chat.completions.create({
-        model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      });
+    completionText = await withOpenAIRotation(async (client) => {
+      try {
+        const response = await client.chat.completions.create({
+          model,
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        });
 
-      completionText = response.choices[0]?.message?.content ?? "";
-    } catch {
-      const fallback = await client.chat.completions.create({
-        model,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      });
+        return response.choices[0]?.message?.content ?? "";
+      } catch {
+        const fallback = await client.chat.completions.create({
+          model,
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        });
 
-      completionText = fallback.choices[0]?.message?.content ?? "";
-    }
+        return fallback.choices[0]?.message?.content ?? "";
+      }
+    });
 
     const parsed = parseJsonFromModel(completionText);
     const normalized = normalizeStudyPack(
