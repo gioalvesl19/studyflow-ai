@@ -36,8 +36,16 @@ Edite `.env.local`:
 
 ```env
 OPENAI_API_KEY=sua_chave_aqui
+OPENAI_API_KEYS=chave_1,chave_2,chave_3
+OPENAI_BASE_URL=https://seu-endpoint-openai-compatível/v1
 OPENAI_MODEL=gpt-4o-mini
 ```
+
+Notas:
+
+- `OPENAI_API_KEY`: chave principal.
+- `OPENAI_API_KEYS`: lista opcional para rotação automática (fallback quando uma chave falha/limita).
+- `OPENAI_BASE_URL`: opcional para gateways OpenAI-compatíveis.
 
 3. Rode o projeto:
 

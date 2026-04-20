@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOpenAIClient, getOpenAIModel } from "@/lib/server/openai-client";
+import { getOpenAIModel, withOpenAIRotation } from "@/lib/server/openai-client";
 
 export const runtime = "nodejs";
 
@@ -47,31 +47,32 @@ export async function POST(request: Request) {
         ? body.context.trim().slice(0, 12_000)
         : "";
 
-    const client = getOpenAIClient();
     const model = getOpenAIModel();
-
-    const response = await client.chat.completions.create({
-      model,
-      temperature: 0.45,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Você é um tutor paciente e didático. Explique os temas em português do Brasil, " +
-            "use passos claros, exemplos e verifique entendimento no final de cada resposta.",
-        },
-        ...(context
-          ? [
-              {
-                role: "system" as const,
-                content:
-                  "Contexto do material atual do aluno. Use como referência principal:\n" + context,
-              },
-            ]
-          : []),
-        ...messages,
-      ],
-    });
+    const response = await withOpenAIRotation((client) =>
+      client.chat.completions.create({
+        model,
+        temperature: 0.45,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um tutor paciente e didático. Explique os temas em português do Brasil, " +
+              "use passos claros, exemplos e verifique entendimento no final de cada resposta.",
+          },
+          ...(context
+            ? [
+                {
+                  role: "system" as const,
+                  content:
+                    "Contexto do material atual do aluno. Use como referência principal:\n" +
+                    context,
+                },
+              ]
+            : []),
+          ...messages,
+        ],
+      })
+    );
 
     const answer = response.choices[0]?.message?.content?.trim();
 
